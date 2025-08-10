@@ -9,6 +9,9 @@ on:
     - cron: "1 0 * * 1"    # 7:01 PM Perú (domingo en Perú, pero lunes UTC)
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   send-post:
     runs-on: ubuntu-latest
