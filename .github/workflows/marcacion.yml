@@ -1,0 +1,69 @@
+name: Marcaciones Automáticas
+
+on:
+  schedule:
+    # 8:00 AM Perú (13:00 UTC) -> ME
+    - cron: "0 13 * * 0"
+    # 1:00 PM Perú (18:00 UTC) -> IR
+    - cron: "0 18 * * 0"
+    # 2:00 PM Perú (19:00 UTC) -> FR
+    - cron: "0 19 * * 0"
+    # 7:00 PM Perú (00:00 UTC lunes) -> MS
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+jobs:
+  send-post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Determinar tipo de marcación y enviar
+        run: |
+          HORA_UTC=$(date -u +"%H")
+          HORA_PERU=$(( (HORA_UTC + 24 - 5) % 24 ))
+
+          if [ "$HORA_PERU" -eq 8 ]; then
+            MARCACION="ME"
+          elif [ "$HORA_PERU" -eq 13 ]; then
+            MARCACION="IR"
+          elif [ "$HORA_PERU" -eq 14 ]; then
+            MARCACION="FR"
+          elif [ "$HORA_PERU" -eq 19 ]; then
+            MARCACION="MS"
+          else
+            echo "No hay marcación en esta hora."
+            exit 0
+          fi
+
+          JSON=$(cat <<EOF
+          {
+            "compania": "02",
+            "correo": "rsinche@continental.edu.pe",
+            "fecha_hora": "$(TZ="America/Lima" date '+%Y-%m-%d %H:%M:%S')",
+            "tipo_marcacion": "$MARCACION"
+          }
+          EOF
+          )
+
+          echo "Marcación automática - $(TZ="America/Lima" date '+%Y-%m-%d %H:%M:%S')" >> log.txt
+          echo "JSON enviado:" >> log.txt
+          echo "$JSON" >> log.txt
+
+          RESPUESTA=$(curl -s -X POST "https://webapimarcacion.continental.edu.pe/api/marcacion/registrar" \
+            -H "Content-Type: application/json" \
+            -H "apikey: 6bd4da79-7408-44e5-93fd-5da461a97873" \
+            -d "$JSON")
+
+          echo "Respuesta del servidor:" >> log.txt
+          echo "$RESPUESTA" >> log.txt
+          echo "----------------------------------------" >> log.txt
+
+      - name: Guardar log en el repositorio
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add log.txt
+          git commit -m "Marcación $(TZ="America/Lima" date '+%Y-%m-%d %H:%M:%S')"
+          git push
