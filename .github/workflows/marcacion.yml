@@ -1,69 +1,64 @@
-name: Marcaciones Automáticas
+name: Marcación Automática Domingo
 
 on:
   schedule:
-    # 8:00 AM Perú (13:00 UTC) -> ME
-    - cron: "0 13 * * 0"
-    # 1:00 PM Perú (18:00 UTC) -> IR
-    - cron: "0 18 * * 0"
-    # 2:00 PM Perú (19:00 UTC) -> FR
-    - cron: "0 19 * * 0"
-    # 7:00 PM Perú (00:00 UTC lunes) -> MS
-    - cron: "0 0 * * 1"
+    # Domingo a las horas de Perú (UTC+5)
+    - cron: "0 13 * * 0"   # 8:00 AM Perú
+    - cron: "0 18 * * 0"   # 1:00 PM Perú
+    - cron: "0 19 * * 0"   # 2:00 PM Perú
+    - cron: "1 0 * * 1"    # 7:01 PM Perú (domingo en Perú, pero lunes UTC)
   workflow_dispatch:
 
 jobs:
   send-post:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout del repositorio
-        uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - name: Determinar tipo de marcación y enviar
+      - name: Configurar hora de Perú
+        run: sudo timedatectl set-timezone America/Lima
+
+      - name: Ejecutar marcación y guardar log
         run: |
-          HORA_UTC=$(date -u +"%H")
-          HORA_PERU=$(( (HORA_UTC + 24 - 5) % 24 ))
+          mkdir -p logs
+          touch logs/log.txt
+          
+          # Obtener hora actual de Perú
+          FECHA=$(date "+%Y-%m-%d %H:%M:%S")
 
-          if [ "$HORA_PERU" -eq 8 ]; then
-            MARCACION="ME"
-          elif [ "$HORA_PERU" -eq 13 ]; then
-            MARCACION="IR"
-          elif [ "$HORA_PERU" -eq 14 ]; then
-            MARCACION="FR"
-          elif [ "$HORA_PERU" -eq 19 ]; then
-            MARCACION="MS"
-          else
-            echo "No hay marcación en esta hora."
-            exit 0
-          fi
+          # Determinar tipo de marcación según hora actual
+          HORA=$(date "+%H:%M")
+          if [ "$HORA" = "08:00" ]; then TIPO="ME"; fi
+          if [ "$HORA" = "13:00" ]; then TIPO="IR"; fi
+          if [ "$HORA" = "14:00" ]; then TIPO="FR"; fi
+          if [ "$HORA" = "19:01" ]; then TIPO="MS"; fi
 
-          JSON=$(cat <<EOF
-          {
-            "compania": "02",
-            "correo": "rsinche@continental.edu.pe",
-            "fecha_hora": "$(TZ="America/Lima" date '+%Y-%m-%d %H:%M:%S')",
-            "tipo_marcacion": "$MARCACION"
-          }
-          EOF
+          # JSON a enviar
+          JSON=$(jq -n \
+            --arg compania "02" \
+            --arg correo "rsinche@continental.edu.pe" \
+            --arg fecha_hora "$FECHA" \
+            --arg tipo_marcacion "$TIPO" \
+            '{compania: $compania, correo: $correo, fecha_hora: $fecha_hora, tipo_marcacion: $tipo_marcacion}'
           )
 
-          echo "Marcación automática - $(TZ="America/Lima" date '+%Y-%m-%d %H:%M:%S')" >> log.txt
-          echo "JSON enviado:" >> log.txt
-          echo "$JSON" >> log.txt
-
+          # Enviar petición y guardar respuesta
           RESPUESTA=$(curl -s -X POST "https://webapimarcacion.continental.edu.pe/api/marcacion/registrar" \
             -H "Content-Type: application/json" \
             -H "apikey: 6bd4da79-7408-44e5-93fd-5da461a97873" \
             -d "$JSON")
 
-          echo "Respuesta del servidor:" >> log.txt
-          echo "$RESPUESTA" >> log.txt
-          echo "----------------------------------------" >> log.txt
+          # Guardar en log
+          echo "Fecha de envío: $FECHA" >> logs/log.txt
+          echo "JSON enviado: $JSON" >> logs/log.txt
+          echo "Respuesta del servidor: $RESPUESTA" >> logs/log.txt
+          echo "----------------------------------------" >> logs/log.txt
 
-      - name: Guardar log en el repositorio
+      - name: Commit y push del log
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add log.txt
-          git commit -m "Marcación $(TZ="America/Lima" date '+%Y-%m-%d %H:%M:%S')"
+          git add logs/log.txt
+          git commit -m "Actualizar log automático"
           git push
