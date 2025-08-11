@@ -7,3 +7,12 @@ JSON enviado: {
 }
 Respuesta del servidor: [{"Status":1,"Message":"Se registró tu asistencia correctamente.","Register":"2025-08-09T23:39:54","DocumentNumber":"70106169","TipoMarcacion":""}]
 ----------------------------------------
+Fecha de envío: 2025-08-11 08:37:07
+JSON enviado: {
+  "compania": "02",
+  "correo": "rsinche@continental.edu.pe",
+  "fecha_hora": "2025-08-11 08:37:07",
+  "tipo_marcacion": ""
+}
+Respuesta del servidor: [{"Status":1,"Message":"Se registró tu asistencia correctamente.","Register":"2025-08-11T08:37:07","DocumentNumber":"70106169","TipoMarcacion":""}]
+----------------------------------------
