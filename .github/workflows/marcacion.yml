@@ -1,85 +1,85 @@
-name: Marcación Automática Lunes a Viernes
+# name: Marcación Automática Lunes a Viernes
 
-on:
-  schedule:
-    # Domingo a las horas de Perú (UTC+5)
-    - cron: "50 12 * * 1-5"   # 8:00 AM Perú
-    - cron: "55 17 * * 1-5"   # 1:00 PM Perú
-    - cron: "40 18 * * 1-5"   # 2:00 PM Perú
-    - cron: "1 0 * * 2-6"    # 7:01 PM Perú (domingo en Perú, pero lunes UTC)
-  workflow_dispatch:
+# on:
+#   schedule:
+#     # Domingo a las horas de Perú (UTC+5)
+#     - cron: "50 12 * * 1-5"   # 8:00 AM Perú
+#     - cron: "55 17 * * 1-5"   # 1:00 PM Perú
+#     - cron: "40 18 * * 1-5"   # 2:00 PM Perú
+#     - cron: "1 0 * * 2-6"    # 7:01 PM Perú (domingo en Perú, pero lunes UTC)
+#   workflow_dispatch:
 
-permissions:
-  contents: write
+# permissions:
+#   contents: write
 
-jobs:
-  send-post:
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+# jobs:
+#   send-post:
+#     runs-on: ubuntu-20.04
+#     steps:
+#       - name: Checkout repo
+#         uses: actions/checkout@v3
 
-      - name: Configurar hora de Perú
-        run: sudo timedatectl set-timezone America/Lima
+#       - name: Configurar hora de Perú
+#         run: sudo timedatectl set-timezone America/Lima
 
-      - name: Ejecutar marcación y guardar log
-        run: |
-          mkdir -p logs
-          touch logs/log.txt
+#       - name: Ejecutar marcación y guardar log
+#         run: |
+#           mkdir -p logs
+#           touch logs/log.txt
           
-          # Obtener hora actual de Perú
-          FECHA=$(date "+%Y-%m-%d %H:%M:%S")
+#           # Obtener hora actual de Perú
+#           FECHA=$(date "+%Y-%m-%d %H:%M:%S")
 
-          # Determinar tipo de marcación según hora actual
-          HORA=$(date "+%H")
-          MIN=$(date "+%M")
+#           # Determinar tipo de marcación según hora actual
+#           HORA=$(date "+%H")
+#           MIN=$(date "+%M")
 
-          # Hora actual en Perú
-          HORA_MIN=$(date "+%H:%M")
+#           # Hora actual en Perú
+#           HORA_MIN=$(date "+%H:%M")
 
-          # Función para comprobar si está en un rango inclusivo
-          en_rango() {
-            [[ "$1" > "$2" && "$1" < "$3" ]] || [[ "$1" = "$2" ]] || [[ "$1" = "$3" ]]
-          }
+#           # Función para comprobar si está en un rango inclusivo
+#           en_rango() {
+#             [[ "$1" > "$2" && "$1" < "$3" ]] || [[ "$1" = "$2" ]] || [[ "$1" = "$3" ]]
+#           }
 
-          # Determinar tipo de marcación según rango
-          if en_rango "$HORA_MIN" "07:50" "08:30"; then
-            TIPO="ME"
-          elif en_rango "$HORA_MIN" "13:00" "13:30"; then
-            TIPO="IR"
-          elif en_rango "$HORA_MIN" "13:40" "14:10"; then
-            TIPO="FR"
-          elif en_rango "$HORA_MIN" "19:00" "19:30"; then
-            TIPO="MS"
-          else
-            TIPO=""
-          fi
+#           # Determinar tipo de marcación según rango
+#           if en_rango "$HORA_MIN" "07:50" "08:30"; then
+#             TIPO="ME"
+#           elif en_rango "$HORA_MIN" "13:00" "13:30"; then
+#             TIPO="IR"
+#           elif en_rango "$HORA_MIN" "13:40" "14:10"; then
+#             TIPO="FR"
+#           elif en_rango "$HORA_MIN" "19:00" "19:30"; then
+#             TIPO="MS"
+#           else
+#             TIPO=""
+#           fi
 
-          # JSON a enviar
-          JSON=$(jq -n \
-            --arg compania "02" \
-            --arg correo "rsinche@continental.edu.pe" \
-            --arg fecha_hora "$FECHA" \
-            --arg tipo_marcacion "$TIPO" \
-            '{compania: $compania, correo: $correo, fecha_hora: $fecha_hora, tipo_marcacion: $tipo_marcacion}'
-          )
+#           # JSON a enviar
+#           JSON=$(jq -n \
+#             --arg compania "02" \
+#             --arg correo "rsinche@continental.edu.pe" \
+#             --arg fecha_hora "$FECHA" \
+#             --arg tipo_marcacion "$TIPO" \
+#             '{compania: $compania, correo: $correo, fecha_hora: $fecha_hora, tipo_marcacion: $tipo_marcacion}'
+#           )
 
-          # Enviar petición y guardar respuesta
-          RESPUESTA=$(curl -s -X POST "https://webapimarcacion.continental.edu.pe/api/marcacion/registrar" \
-            -H "Content-Type: application/json" \
-            -H "apikey: 6bd4da79-7408-44e5-93fd-5da461a97873" \
-            -d "$JSON")
+#           # Enviar petición y guardar respuesta
+#           RESPUESTA=$(curl -s -X POST "https://webapimarcacion.continental.edu.pe/api/marcacion/registrar" \
+#             -H "Content-Type: application/json" \
+#             -H "apikey: 6bd4da79-7408-44e5-93fd-5da461a97873" \
+#             -d "$JSON")
 
-          # Guardar en log
-          echo "Fecha de envío: $FECHA" >> logs/log.txt
-          echo "JSON enviado: $JSON" >> logs/log.txt
-          echo "Respuesta del servidor: $RESPUESTA" >> logs/log.txt
-          echo "----------------------------------------" >> logs/log.txt
+#           # Guardar en log
+#           echo "Fecha de envío: $FECHA" >> logs/log.txt
+#           echo "JSON enviado: $JSON" >> logs/log.txt
+#           echo "Respuesta del servidor: $RESPUESTA" >> logs/log.txt
+#           echo "----------------------------------------" >> logs/log.txt
 
-      - name: Commit y push del log
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add logs/log.txt
-          git commit -m "Actualizar log automático"
-          git push
+#       - name: Commit y push del log
+#         run: |
+#           git config --global user.name "github-actions[bot]"
+#           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+#           git add logs/log.txt
+#           git commit -m "Actualizar log automático"
+#           git push
